@@ -19,8 +19,8 @@ public class CGasStation implements GasStation {
 	private int numberOfCancellationsNoGas = 0;
 	private int numberOfCancellationsTooExpensive = 0;
 	private Map<GasType, Double> priceMap = new HashMap<GasType, Double>();
-	
-	
+
+
 
 	@Override
 	public void addGasPump(GasPump pump) {
@@ -36,12 +36,11 @@ public class CGasStation implements GasStation {
 	public double buyGas(GasType type, double amountInLiters,
 			double maxPricePerLiter) throws NotEnoughGasException,
 			GasTooExpensiveException {
-		
-		boolean gasPumped = false;
-		boolean foundGasType = false;
-		Vector<GasPump> auxPumpList = new Vector<GasPump>();
-		double gasCounter = 0;
 		synchronized(this){
+			boolean gasPumped = false;
+			boolean foundGasType = false;
+			Vector<GasPump> auxPumpList = new Vector<GasPump>();
+			double gasCounter = 0;		
 			for (int i = 0; i < gasPumps.size(); i++)
 			{
 				GasPump pump = gasPumps.get(i);
@@ -76,11 +75,11 @@ public class CGasStation implements GasStation {
 						}
 						break;
 					}
-					
+
 				}
-				
+
 			}
-			
+
 			// There is no pump with that gas type
 			if(!gasPumped && !foundGasType)
 			{
@@ -102,7 +101,7 @@ public class CGasStation implements GasStation {
 						{
 							return 0;
 						}
-						
+
 						// The price per liter of our gas station is more expensive than the price the customer is willing to pay.
 						// In this case, we must increase the counter of the number of failed sales due to too expensive gas and throw the exception					
 						if(maxPricePerLiter < this.getPrice(type))
@@ -116,11 +115,11 @@ public class CGasStation implements GasStation {
 						{
 							numberOfSales++;
 							double finalPrice = (this.getPrice(type) * amountInLiters);
-							totalRevenue += finalPrice;
+							totalRevenue += finalPrice;							
 							double remainingAmountToBePumped = amountInLiters;
 							for (int i = 0; i < auxPumpList.size(); i++)
 							{
-								GasPump pump = gasPumps.get(i);
+								GasPump pump = auxPumpList.get(i);
 								if(remainingAmountToBePumped <= pump.getRemainingAmount())
 								{
 									pump.pumpGas(remainingAmountToBePumped);
@@ -142,20 +141,22 @@ public class CGasStation implements GasStation {
 
 	@Override
 	public double getRevenue() {
-		return this.totalRevenue;
-		
+		synchronized(this){
+			return this.totalRevenue;
+		}
+
 	}
 
 	@Override
 	public int getNumberOfSales() {
 		return this.numberOfSales;
-		
+
 	}
 
 	@Override
 	public int getNumberOfCancellationsNoGas() {
 		return this.numberOfCancellationsNoGas;
-		
+
 	}
 
 	@Override
