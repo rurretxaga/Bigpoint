@@ -29,14 +29,14 @@ public class CGasStation implements GasStation {
 
 	@Override
 	public Collection<GasPump> getGasPumps() {
-			return this.gasPumps;
+		return new Vector<GasPump>(this.gasPumps);
 	}
 
 	@Override
-	public double buyGas(GasType type, double amountInLiters,
+	public synchronized double buyGas(GasType type, double amountInLiters,
 			double maxPricePerLiter) throws NotEnoughGasException,
 			GasTooExpensiveException {
-		synchronized(this){
+		
 			boolean gasPumped = false;
 			boolean foundGasType = false;
 			Vector<GasPump> auxPumpList = new Vector<GasPump>();
@@ -135,7 +135,6 @@ public class CGasStation implements GasStation {
 							return finalPrice;						
 						}
 					}
-		} // synchronized
 		return 0;
 	}
 
@@ -165,19 +164,14 @@ public class CGasStation implements GasStation {
 	}
 
 	@Override
-	public double getPrice(GasType type) {
-		if(priceMap.get(type)!=null)
-		{
-			return (double)priceMap.get(type);
-		}
-		else
-		{
-			return 0;
-		}
+	public synchronized double getPrice(GasType type) {
+		if (priceMap.get(type) == null)
+			throw new RuntimeException("Price not specified for gas type.");
+		return (double)priceMap.get(type);
 	}
 
 	@Override
-	public void setPrice(GasType type, double price) {
+	public synchronized void setPrice(GasType type, double price) {
 			priceMap.put(type, (Double)price);
 	}
 
