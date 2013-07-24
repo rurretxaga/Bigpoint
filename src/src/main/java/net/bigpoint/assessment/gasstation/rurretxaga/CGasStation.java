@@ -37,107 +37,65 @@ public class CGasStation implements GasStation {
 			double maxPricePerLiter) throws NotEnoughGasException,
 			GasTooExpensiveException {
 		
-			boolean gasPumped = false;
-			boolean foundGasType = false;
+			double price = getPrice(type) * amountInLiters;
+			// The price per liter of our gas station is more expensive than the price the customer is willing to pay.
+			// In this case, we must increase the counter of the number of failed sales due to too expensive gas and throw the exception
+			if (price > maxPricePerLiter) {
+				numberOfCancellationsTooExpensive++;
+				throw new GasTooExpensiveException();
+			}
+		
+			
+			double gasCounter = 0.0;
 			Vector<GasPump> auxPumpList = new Vector<GasPump>();
-			double gasCounter = 0;		
-			for (int i = 0; i < gasPumps.size(); i++)
-			{
-				GasPump pump = gasPumps.get(i);
-				// Checking if gas type of the pumper is the same as requested
+			for (GasPump pump : gasPumps) {
 				if (pump.getGasType() != type)
-				{
 					continue;
-				}
-				else
-				{
-					foundGasType = true;
-					// Checking if the remaining amount of gas from pumper satisfies what customer is asking
-					gasCounter += pump.getRemainingAmount();
-					if((pump.getRemainingAmount() < amountInLiters) && (gasCounter < amountInLiters))
-					{
-						auxPumpList.add(pump);
-						continue;
-					}
-					else 
-					{
-						if (pump.getRemainingAmount() >= amountInLiters)
-						{
-							auxPumpList.clear();
-							auxPumpList.add(pump);
-							gasCounter = 0;
-							gasPumped = true;
-						}
-						else if (gasCounter >= amountInLiters)
-						{
-							auxPumpList.add(pump);
-							gasPumped = true;
-						}
-						break;
-					}
-
-				}
-
-			}
-
-			// There is no pump with that gas type
-			if(!gasPumped && !foundGasType)
-			{
-				return 0;
-			}
-			// There is one or more pumps with that gas type but not enough amount.
-			// In this case, we must increase the counter of the number of failed sales due to not enough gas and throw the exception
-			else if(!gasPumped && foundGasType)
-				{
-					numberOfCancellationsNoGas++;
-					throw new NotEnoughGasException();
+				
+				// The price is suitable for the customer and there is enough gas to pump.
+				// In this case, we increase the number of successful sales, we calculate the total revenue, we call the pumpGas method from the gas pump(s) and we return the total price
+				if (pump.getRemainingAmount() >= amountInLiters) {
+					pump.pumpGas(amountInLiters);
+					numberOfSales++;
+					totalRevenue += price;
+					return price;
 				}
 				// There is one or more pumps with that gas type and enough amount to pump.
 				// In this case, we must continue checking.
-				else if (gasPumped && foundGasType)
-					{
-						// There is no price set for that gas pump
-						if(this.getPrice(type) == 0)
-						{
-							return 0;
-						}
-
-						// The price per liter of our gas station is more expensive than the price the customer is willing to pay.
-						// In this case, we must increase the counter of the number of failed sales due to too expensive gas and throw the exception					
-						if(maxPricePerLiter < this.getPrice(type))
-						{
-							numberOfCancellationsTooExpensive++;
-							throw new GasTooExpensiveException();
-						}
-						// The price is suitable for the customer and there is enough gas to pump.
-						// In this case, we increase the number of successful sales, we calculate the total revenue, we call the pumpGas method from the gas pump(s) and we return the total price
-						else
-						{
-							numberOfSales++;
-							double finalPrice = (this.getPrice(type) * amountInLiters);
-							totalRevenue += finalPrice;							
-							double remainingAmountToBePumped = amountInLiters;
-							for (int i = 0; i < auxPumpList.size(); i++)
-							{
-								GasPump pump = auxPumpList.get(i);
-								if(remainingAmountToBePumped <= pump.getRemainingAmount())
-								{
-									pump.pumpGas(remainingAmountToBePumped);
-									break;
-								}
-								else
-								{
-									remainingAmountToBePumped -= pump.getRemainingAmount();
-									pump.pumpGas(pump.getRemainingAmount());
-									continue;
-								}
-							}
-							return finalPrice;						
-						}
-					}
-		return 0;
+				auxPumpList.add(pump);
+				gasCounter += pump.getRemainingAmount();
+				if (gasCounter < amountInLiters)
+					continue;
+				// The gas counter of the remaining amount from the list of pumps is the same as the one the client is requesting.
+				// In this case, an auxiliary method is called to start pumping gas for them.
+				pumpGas(auxPumpList, amountInLiters);
+				numberOfSales++;
+				totalRevenue += price;
+				return price;
+			}
+			// There is not enough amount to satisfy the client.
+			// In this case, we must increase the counter of the number of failed sales due to not enough gas and throw the exception
+			numberOfCancellationsNoGas++;
+			throw new NotEnoughGasException();
+			
 	}
 
+	
+	/** Auxiliary method, used for pumping gas from the list of pumps so the final amount of gas satisfies the client */
+	private void pumpGas(Vector<GasPump> gasPumps, double requestedLiters) {
+		for (GasPump pump : gasPumps) {
+			double remaining = pump.getRemainingAmount();
+			if (requestedLiters <= remaining) {
+				pump.pumpGas(requestedLiters);
+				break;
+			}
+			else {
+				pump.pumpGas(remaining);
+				requestedLiters -= remaining;
+			}
+		}
+	}
+	
 	@Override
 	public double getRevenue() {
 		synchronized(this){
@@ -165,6 +123,7 @@ public class CGasStation implements GasStation {
 
 	@Override
 	public synchronized double getPrice(GasType type) {
+		// If there is no price set up for that type of gas, a exception is thrown
 		if (priceMap.get(type) == null)
 			throw new RuntimeException("Price not specified for gas type.");
 		return (double)priceMap.get(type);
